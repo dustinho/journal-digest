@@ -21,8 +21,8 @@ secrets = JSON.parse(content);
 
 // Set up time strings
 const moment = require('moment');
-// var now = moment();
-var now = moment("2017-06-17");
+var now = moment();
+//var now = moment("2017-06-17");
 var format = 'MMMM DD[,] YYYY';
 var now_string = now.format(format);
 var m7_string = now.subtract({days:7}).format(format);
@@ -66,7 +66,7 @@ Promise.all(get_notes).then(function(notes) {
     user: secrets.gmail_user,
     pass: secrets.gmail_app_pwd,             // Has to be app-specific password
     to: secrets.gmail_to,
-    subject: 'Journal Digest',
+    subject: 'Journal Digest: ' + now_string,
     //text:    'test text',
     html: html,
   });
@@ -116,7 +116,7 @@ function findNoteFromDate(notestore, date_string, notebook_name) {
       return notestore.findNotesMetadata(filter, 0, 50, metadata_spec);
     }).then(function(notesMetadataList) {
       if (!notesMetadataList.notes[0]){
-        reject("No note found with: " + date_string);
+        resolve("No note found with: " + date_string);
       }
       return notesMetadataList.notes[0].guid;
     }).then(function(note_guid) {
