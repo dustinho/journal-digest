@@ -1,4 +1,6 @@
-// Depends on: moment, evernote, gmail_send
+#!/usr/bin/env nodejs
+
+// Depends on: moment, evernote, gmail-send
 
 // Start by reading some secrets
 // client_secrets.json should have
