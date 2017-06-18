@@ -9,39 +9,89 @@
 //  "gmail_to": "",
 //  "gmail_app_pwd": "",
 //  "evernote_dev_token": "",
-//  "evernote_notestore": ""
+//  "evernote_noteStore": ""
 // }
 //
 // from https://dev.evernote.com/doc/articles/dev_tokens.php
 // You'll need to request that the key be activated for production
 
-var fs = require('fs');
-content = fs.readFileSync('client_secrets.json');
-secrets = JSON.parse(content);
+const Evernote = require('evernote');
+const fs = require('fs');
+
+const content = fs.readFileSync('client_secrets.json');
+const secrets = JSON.parse(content);
 
 // Set up time strings
 const moment = require('moment');
-var now = moment();
-//var now = moment("2017-06-17");
-var format = 'MMMM DD[,] YYYY';
-var now_string = now.format(format);
-var m7_string = now.subtract({days:7}).format(format);
-var m30_string = now.subtract({days:23}).format(format);
-var m365_string = now.subtract({days:335}).format(format);
 
-// Evernote
-var Evernote = require('evernote');
-var client = new Evernote.Client({token: secrets.evernote_sb_token});
-var noteStore = client.getNoteStore();
+const now = moment();
+// const now = moment('2017-06-17'); // For testing
+const format = 'MMMM DD[,] YYYY';
+const nowString = now.format(format);
+const m7String = now.subtract({ days: 7 }).format(format);
+const m30String = now.subtract({ days: 23 }).format(format);
+const m365String = now.subtract({ days: 335 }).format(format);
 
-var get_notes = [];
-get_notes.push(findNoteFromDate(noteStore, m7_string, 'Journal'));
-get_notes.push(findNoteFromDate(noteStore, m30_string, 'Journal'));
-get_notes.push(findNoteFromDate(noteStore, m365_string, 'Journal'));
-Promise.all(get_notes).then(function(notes) {
+// Look for a note with the date's title in the specified notebook.
+// Returns Promise with HTML string
 
-  // HTML format and send email
-  var html = `
+function findNoteFromDate(noteStore, dateString, notebookName) {
+  return new Promise((resolve, reject) => {
+    const getNotebookGUID = noteStore.listNotebooks().then((notebooks) => {
+      for (const i in notebooks) {
+        if (notebooks[i].name === notebookName) {
+          return notebooks[i].guid;
+        }
+      }
+      return reject('No notebook found');
+    })
+    .catch((error) => {
+      reject(error);
+    });
+
+    const metadataSpec = new Evernote.NoteStore.NotesMetadataResultSpec({
+      includeTitle: true,
+    });
+    const noteSpec = new Evernote.NoteStore.NoteResultSpec({
+      includeContent: true,
+      includeResourcesData: true,
+      includeResourcesRecognition: true,
+    });
+
+    getNotebookGUID.then(id => new Evernote.NoteStore.NoteFilter({
+      words: dateString,
+      notebookGuid: id,
+    }))
+    .then(filter => noteStore.findNotesMetadata(filter, 0, 50, metadataSpec))
+    .then((notesMetadataList) => {
+      if (!notesMetadataList.notes[0]) {
+        resolve(`No note found with: ${dateString}`);
+      }
+      return notesMetadataList.notes[0].guid;
+    })
+    .then(noteGuid => noteStore.getNoteWithResultSpec(
+      noteGuid,
+      noteSpec
+    ))
+    .then((note) => {
+      resolve(note.content);
+    })
+    .catch((error) => {
+      reject(error);
+    });
+  });
+}
+
+const client = new Evernote.Client({ token: secrets.evernote_sb_token });
+const noteStore = client.getNoteStore();
+
+// Format and send emails
+const getNotes = [];
+getNotes.push(findNoteFromDate(noteStore, m7String, 'Journal'));
+getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
+getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
+Promise.all(getNotes).then((notes) => {
+  const html = `
       <big><b>-7</b></big>
       <br>
       <hr>
@@ -62,13 +112,13 @@ Promise.all(get_notes).then(function(notes) {
       ${notes[2]}
   `;
 
-  var gmail_send = require('gmail-send')({
+  const gmail_send = require('gmail-send')({
     user: secrets.gmail_user,
     pass: secrets.gmail_app_pwd,             // Has to be app-specific password
     to: secrets.gmail_to,
-    subject: 'Journal Digest: ' + now_string,
-    //text:    'test text',
-    html: html,
+    subject: `Journal Digest: ${nowString}`,
+    // text: 'test text',
+    html,
   });
 
   gmail_send({}, function (err, res) {
@@ -78,53 +128,7 @@ Promise.all(get_notes).then(function(notes) {
       console.log('gmail_send() SUCCESS:', res);
     }
   });
-}).catch(function(error) {
+})
+.catch((error) => {
   console.log(error);
 });
-
-
-// Look for a note with the date's title in the specified notebook.
-// Returns Promise with HTML string
-
-function findNoteFromDate(notestore, date_string, notebook_name) {
-  return new Promise(function(resolve, reject) {
-    var getNotebookGUID = notestore.listNotebooks().then(function(notebooks) {
-      for (var i in notebooks) {
-        if (notebooks[i].name == notebook_name) {
-          return notebooks[i].guid;
-        }
-      }
-    }).catch(function(error) {
-        reject(error);
-    });
-
-    var metadata_spec = new Evernote.NoteStore.NotesMetadataResultSpec({
-      includeTitle: true,
-    });
-    var note_spec = new Evernote.NoteStore.NoteResultSpec({
-      includeContent: true,
-      includeResourcesData: true,
-      includeResourcesRecognition: true,
-    });
-
-    var getNote = getNotebookGUID.then(function(id) {
-      return new Evernote.NoteStore.NoteFilter({
-        words: date_string,
-        notebookGuid: id,
-      });
-    }).then(function(filter) {
-      return notestore.findNotesMetadata(filter, 0, 50, metadata_spec);
-    }).then(function(notesMetadataList) {
-      if (!notesMetadataList.notes[0]){
-        resolve("No note found with: " + date_string);
-      }
-      return notesMetadataList.notes[0].guid;
-    }).then(function(note_guid) {
-      return notestore.getNoteWithResultSpec(note_guid, note_spec);
-    }).then(function(note) {
-      resolve(note.content);
-    }).catch(function(error) {
-      reject(error);
-    });
-  })
-}
