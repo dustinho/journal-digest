@@ -17,8 +17,9 @@
 
 const Evernote = require('evernote');
 const fs = require('fs');
+const path = require('path');
 
-const content = fs.readFileSync('client_secrets.json');
+const content = fs.readFileSync(path.resolve(__dirname, 'client_secrets.json'));
 const secrets = JSON.parse(content);
 
 // Set up time strings
