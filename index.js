@@ -83,7 +83,10 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
   });
 }
 
-const client = new Evernote.Client({ token: secrets.evernote_sb_token });
+const client = new Evernote.Client({
+	sandbox: false,
+	token: secrets.evernote_dev_token,
+});
 const noteStore = client.getNoteStore();
 
 // Format and send emails
