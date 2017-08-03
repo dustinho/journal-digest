@@ -31,7 +31,8 @@ const format = 'MMMM DD[,] YYYY';
 const nowString = now.format(format);
 const m7String = now.subtract({ days: 7 }).format(format);
 const m30String = now.subtract({ days: 23 }).format(format);
-const m365String = now.subtract({ days: 335 }).format(format);
+const m90String = now.subtract({ days: 60 }).format(format);
+const m365String = now.subtract({ days: 275 }).format(format);
 
 // Look for a note with the date's title in the specified notebook.
 // Returns Promise with HTML string
@@ -93,6 +94,7 @@ const noteStore = client.getNoteStore();
 const getNotes = [];
 getNotes.push(findNoteFromDate(noteStore, m7String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
+getNotes.push(findNoteFromDate(noteStore, m90String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
 Promise.all(getNotes).then((notes) => {
   const html = `
@@ -110,10 +112,16 @@ Promise.all(getNotes).then((notes) => {
 
       <br><br><br>
 
-      <big><b>-365</b></big>
+      <big><b>-90</b></big>
       <br>
       <hr>
       ${notes[2]}
+
+      <br><br><br>
+      <big><b>-365</b></big>
+      <br>
+      <hr>
+      ${notes[3]}
   `;
 
   const gmail_send = require('gmail-send')({
