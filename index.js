@@ -34,10 +34,20 @@ const m30String = now.subtract({ days: 23 }).format(format);
 const m90String = now.subtract({ days: 60 }).format(format);
 const m365String = now.subtract({ days: 275 }).format(format);
 
+function getMediaType(media) {
+  if (media === '') {
+    return '';
+  }
+  const index = media.indexOf('/') + 1;
+  return media.slice(index);
+}
+
 // Look for a note with the date's title in the specified notebook.
 // Returns Promise with HTML string
 
 function findNoteFromDate(noteStore, dateString, notebookName) {
+  var data = {};
+  data.attach_paths = [];
   return new Promise((resolve, reject) => {
     const getNotebookGUID = noteStore.listNotebooks().then((notebooks) => {
       for (const i in notebooks) {
@@ -60,8 +70,9 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
       includeResourcesRecognition: true,
     });
 
+    const strictDateString = `"${dateString}"`;
     getNotebookGUID.then(id => new Evernote.NoteStore.NoteFilter({
-      words: dateString,
+      words: strictDateString,
       notebookGuid: id,
     }))
     .then(filter => noteStore.findNotesMetadata(filter, 0, 50, metadataSpec))
@@ -76,7 +87,33 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
       noteSpec
     ))
     .then((note) => {
-      resolve(note.content);
+      // Save the content and then go get the attached resources
+      data.content = note.content;
+      if (!note.resources) {
+        return Promise.resolve();
+      }
+      return Promise.all(
+        note.resources.map((res) => {
+          return noteStore.getResource(res.guid, true, true, true, true);
+        })
+      );
+    })
+    .then((resources) => {
+      if (!resources) {
+        return Promise.resolve();
+      }
+
+      // Write resources to files
+      return Promise.all(
+        resources.map((res) => {
+          const filename = `attachments/${res.guid}.${getMediaType(res.mime)}`;
+          data.attach_paths.push(filename);
+          return fs.writeFile(filename, res.data.body);
+        })
+      );
+    })
+    .then(() => {
+      resolve([data.content, data.attach_paths])
     })
     .catch((error) => {
       reject(error);
@@ -97,31 +134,33 @@ getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m90String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
 Promise.all(getNotes).then((notes) => {
+  // Wish I had array_pull
+  const filepaths = notes[0][1].concat(notes[1][1], notes[2][1], notes[3][1]);
   const html = `
       <big><b>-7</b></big>
       <br>
       <hr>
-      ${notes[0]}
+      ${notes[0][0]}
 
       <br><br><br>
 
       <big><b>-30</b></big>
       <br>
       <hr>
-      ${notes[1]}
+      ${notes[1][0]}
 
       <br><br><br>
 
       <big><b>-90</b></big>
       <br>
       <hr>
-      ${notes[2]}
+      ${notes[2][0]}
 
       <br><br><br>
       <big><b>-365</b></big>
       <br>
       <hr>
-      ${notes[3]}
+      ${notes[3][0]}
   `;
 
   const gmail_send = require('gmail-send')({
@@ -129,6 +168,7 @@ Promise.all(getNotes).then((notes) => {
     pass: secrets.gmail_app_pwd,             // Has to be app-specific password
     to: secrets.gmail_to,
     subject: `Journal Digest: ${nowString}`,
+    files: filepaths,
     // text: 'test text',
     html,
   });
@@ -138,6 +178,11 @@ Promise.all(getNotes).then((notes) => {
       console.log('gmail_send() ERROR:', err);
     } else {
       console.log('gmail_send() SUCCESS:', res);
+
+      // Delete attachments
+      if (filepaths) {
+        filepaths.forEach(file => fs.unlinkSync(file));
+      }
     }
   });
 })
