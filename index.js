@@ -137,6 +137,10 @@ Promise.all(getNotes).then((notes) => {
   // Wish I had array_pull
   const filepaths = notes[0][1].concat(notes[1][1], notes[2][1], notes[3][1]);
   const html = `
+      ${filepaths}
+      <br>	
+      <br>	
+
       <big><b>-7</b></big>
       <br>
       <hr>

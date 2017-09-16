@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "evernote": "^2.0.1-beta",
-    "gmail-send": "^1.2.10",
+    "gmail-send": "^1.2.11",
     "moment": "^2.18.1"
   }
 }
