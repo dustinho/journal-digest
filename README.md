@@ -2,7 +2,15 @@
 
 Simple nodejs script to send a digest of former journal entries to my email every day.
 
+## Remember to:
+* mkdir attachments
+* fill in client_secrets.json
 
+## Testing:
 
-Getting "ThriftException { errorCode: 9, parameter: 'authenticationToken' }"
+node index.js
+
+## Common Errors:
+
+* Getting "ThriftException { errorCode: 9, parameter: 'authenticationToken' }"
 => Check client_secrets.json
