@@ -106,9 +106,15 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
       // Write resources to files
       return Promise.all(
         resources.map((res) => {
-          const filename = `attachments/${res.guid}.${getMediaType(res.mime)}`;
+          const filename = `/home/dho/scripts/journal-digest/attachments/${res.guid}.${getMediaType(res.mime)}`;
           data.attach_paths.push(filename);
-          return fs.writeFile(filename, res.data.body);
+	        //console.log("writing to:" + filename);
+          return fs.writeFile(filename, res.data.body, (err) => {
+            if (err) {
+              console.log("error:" + err);
+              throw err;
+            }
+          });
         })
       );
     })
