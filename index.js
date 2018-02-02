@@ -26,7 +26,7 @@ const secrets = JSON.parse(content);
 const moment = require('moment');
 
 const now = moment();
-// const now = moment('2017-06-17'); // For testing
+// const now = moment('2018-02-01'); // For testing
 const format = 'MMMM DD[,] YYYY';
 const nowString = now.format(format);
 const m7String = now.subtract({ days: 7 }).format(format);
@@ -140,8 +140,14 @@ getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m90String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
 Promise.all(getNotes).then((notes) => {
-  // Wish I had array_pull
-  const filepaths = notes[0][1].concat(notes[1][1], notes[2][1], notes[3][1]);
+  filepaths = "";
+  for (i = 0; i < 4; i++) {
+    // Make sure we check for "No note found with:" when pulling note info
+    if (Array.isArray(notes[i])) {
+      filepaths = filepaths.concat(notes[i][1]);
+    }
+  }
+  
   const html = `
       ${filepaths}
       <br>	
