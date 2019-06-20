@@ -21,8 +21,8 @@
     "eslint-plugin-react": "^7.1.0"
   },
   "dependencies": {
-    "evernote": "^2.0.1-beta",
-    "gmail-send": "^1.2.11",
-    "moment": "^2.18.1"
+    "evernote": "^2.0.5",
+    "gmail-send": "^1.2.14",
+    "moment": "^2.24.0"
   }
 }
