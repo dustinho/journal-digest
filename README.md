@@ -14,3 +14,4 @@ node index.js
 
 * Getting "ThriftException { errorCode: 9, parameter: 'authenticationToken' }"
 => Check client_secrets.json
+=> Generate a new token (yearly) https://dev.evernote.com/doc/articles/dev_tokens.php
