@@ -57,7 +57,7 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
   data.attachPaths = [];
   return new Promise((resolve, reject) => {
     const getNotebookGUID = noteStore.listNotebooks().then((notebooks) => {
-      for (const i in notebooks) {
+      for (let i = 0; i < notebooks.length; i += 1) {
         if (notebooks[i].name === notebookName) {
           return notebooks[i].guid;
         }
@@ -113,7 +113,7 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
         resources.map((res) => {
           const filename = `/home/dho/scripts/journal-digest/attachments/${res.guid}.${getMediaType(res.mime)}`;
           data.attachPaths.push(filename);
-	        // console.log("writing to:" + filename);
+          // console.log("writing to:" + filename);
           return fs.writeFile(filename, res.data.body, (err) => {
             if (err) {
               console.log(`error:${err}`);
@@ -147,33 +147,33 @@ getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
 Promise.all(getNotes).then((notes) => {
   // Generate attachments and embedded images
   const attachments = [];
-  const embedded_images = ['', '', '', ''];
+  const embeddedImages = ['', '', '', ''];
   for (let i = 0; i < 4; i += 1) {
     // Make sure we check for "No note found with:" when pulling note info
     if (Array.isArray(notes[i])) {
       const attachPaths = notes[i][1];
       for (let j = 0; j < attachPaths.length; j += 1) {
         const cid = `image_${i}_${j}`;
-        const embed_string = `<img src="cid:${cid}" width="100%"/>`;
+        const embedString = `<img src="cid:${cid}" width="100%"/>`;
 
         attachments.push({
           cid,
           path: attachPaths[j],
         });
-        embedded_images[i] = embedded_images[i] + embed_string;
+        embeddedImages[i] += embedString;
       }
     }
   }
 
   const html = `
-      <br>	
-      <br>	
+      <br>  
+      <br>  
 
       <big><b>-7</b></big>
       <br>
       <hr>
       ${notes[0][0]}
-      ${embedded_images[0]}
+      ${embeddedImages[0]}
 
       <br><br><br>
 
@@ -181,7 +181,7 @@ Promise.all(getNotes).then((notes) => {
       <br>
       <hr>
       ${notes[1][0]}
-      ${embedded_images[1]}
+      ${embeddedImages[1]}
 
       <br><br><br>
 
@@ -189,14 +189,14 @@ Promise.all(getNotes).then((notes) => {
       <br>
       <hr>
       ${notes[2][0]}
-      ${embedded_images[2]}
+      ${embeddedImages[2]}
 
       <br><br><br>
       <big><b>-365</b></big>
       <br>
       <hr>
       ${notes[3][0]}
-      ${embedded_images[3]}
+      ${embeddedImages[3]}
   `;
 
   // Send some mail!
