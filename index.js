@@ -9,15 +9,22 @@
 //  "gmail_to": "",
 //  "gmail_app_pwd": "",
 //  "evernote_dev_token": "",
-//  "evernote_noteStore": ""
+//  "evernote_noteStore": "",
+//  "snitch_url": ""
 // }
 //
-// from https://dev.evernote.com/doc/articles/dev_tokens.php
+// Evernote tokens from https://dev.evernote.com/doc/articles/dev_tokens.php
 // You'll need to request that the key be activated for production
+//
+// Snitch from deadmanssnitch.com
+//
+// Gmail app pwd needs to be request / 2FA enabled
 
 const Evernote = require('evernote');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 const path = require('path');
+const request = require('request');
 
 const content = fs.readFileSync(path.resolve(__dirname, 'client_secrets.json'));
 const secrets = JSON.parse(content);
@@ -47,7 +54,7 @@ function getMediaType(media) {
 
 function findNoteFromDate(noteStore, dateString, notebookName) {
   var data = {};
-  data.attach_paths = [];
+  data.attachPaths = [];
   return new Promise((resolve, reject) => {
     const getNotebookGUID = noteStore.listNotebooks().then((notebooks) => {
       for (const i in notebooks) {
@@ -107,7 +114,7 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
       return Promise.all(
         resources.map((res) => {
           const filename = `/home/dho/scripts/journal-digest/attachments/${res.guid}.${getMediaType(res.mime)}`;
-          data.attach_paths.push(filename);
+          data.attachPaths.push(filename);
 	        //console.log("writing to:" + filename);
           return fs.writeFile(filename, res.data.body, (err) => {
             if (err) {
@@ -119,7 +126,7 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
       );
     })
     .then(() => {
-      resolve([data.content, data.attach_paths])
+      resolve([data.content, data.attachPaths])
     })
     .catch((error) => {
       reject(error);
@@ -140,16 +147,28 @@ getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m90String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
 Promise.all(getNotes).then((notes) => {
-  var filepaths = [];
-  for (i = 0; i < 4; i++) {
+
+  // Generate attachments and embedded images
+  var attachments = [];
+  let embedded_images = ['', '', '', ''];
+  for (var i = 0; i < 4; i+=1) {
     // Make sure we check for "No note found with:" when pulling note info
-    if (Array.isArray(notes[i]) && notes[i][1].length) {
-      filepaths = filepaths.concat(notes[i][1]);
+    if (Array.isArray(notes[i])) {
+      let attachPaths = notes[i][1];
+      for (var j = 0; j < attachPaths.length; j+=1) {
+        let cid = `image_${i}_${j}`;
+        let embed_string = `<img src="cid:${cid}" width="100%"/>`;
+
+        attachments.push({
+          cid: cid,
+          path: attachPaths[j]
+        });
+        embedded_images[i] = embedded_images[i] + embed_string;
+      }
     }
   }
-  
+
   const html = `
-      ${filepaths}
       <br>	
       <br>	
 
@@ -157,6 +176,7 @@ Promise.all(getNotes).then((notes) => {
       <br>
       <hr>
       ${notes[0][0]}
+      ${embedded_images[0]}
 
       <br><br><br>
 
@@ -164,6 +184,7 @@ Promise.all(getNotes).then((notes) => {
       <br>
       <hr>
       ${notes[1][0]}
+      ${embedded_images[1]}
 
       <br><br><br>
 
@@ -171,34 +192,46 @@ Promise.all(getNotes).then((notes) => {
       <br>
       <hr>
       ${notes[2][0]}
+      ${embedded_images[2]}
 
       <br><br><br>
       <big><b>-365</b></big>
       <br>
       <hr>
       ${notes[3][0]}
+      ${embedded_images[3]}
   `;
 
-  const gmail_send = require('gmail-send')({
-    user: secrets.gmail_user,
-    pass: secrets.gmail_app_pwd,             // Has to be app-specific password
-    to: secrets.gmail_to,
-    subject: `Journal Digest: ${nowString}`,
-    files: filepaths,
-    // text: 'test text',
-    html,
+  // Send some mail!
+
+  var transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: secrets.gmail_user,
+      pass: secrets.gmail_app_pwd
+    }
   });
 
-  gmail_send({}, function (err, res) {
-    if (err) {
-      console.log('gmail_send() ERROR:', err);
-    } else {
-      console.log('gmail_send() SUCCESS:', res);
+  const mailOptions = {
+    from: secrets.gmail_user,
+    to: secrets.gmail_to,
+    subject: `Journal Digest: ${nowString}`,
+    attachments: attachments,
+    html: html,
+  };
 
-      // Delete attachments
-      if (filepaths) {
-        filepaths.forEach(file => fs.unlinkSync(file));
-      }
+  return transporter.sendMail(mailOptions, function (err, info) {
+    // Delete attachments
+    if (attachments) {
+      attachments.forEach(attachment => fs.unlinkSync(attachment.path));
+    }
+
+    if (err) {
+      console.log('ERROR:', err);
+    } else {
+      // Send Deadman's Switch to track failures
+      request(secrets.snitch_url);
+      console.log('SUCCESS:', info);
     }
   });
 })
