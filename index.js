@@ -53,7 +53,7 @@ function getMediaType(media) {
 // Returns Promise with HTML string
 
 function findNoteFromDate(noteStore, dateString, notebookName) {
-  var data = {};
+  const data = {};
   data.attachPaths = [];
   return new Promise((resolve, reject) => {
     const getNotebookGUID = noteStore.listNotebooks().then((notebooks) => {
@@ -91,7 +91,7 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
     })
     .then(noteGuid => noteStore.getNoteWithResultSpec(
       noteGuid,
-      noteSpec
+      noteSpec,
     ))
     .then((note) => {
       // Save the content and then go get the attached resources
@@ -100,9 +100,7 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
         return Promise.resolve();
       }
       return Promise.all(
-        note.resources.map((res) => {
-          return noteStore.getResource(res.guid, true, true, true, true);
-        })
+        note.resources.map(res => noteStore.getResource(res.guid, true, true, true, true)),
       );
     })
     .then((resources) => {
@@ -115,18 +113,18 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
         resources.map((res) => {
           const filename = `/home/dho/scripts/journal-digest/attachments/${res.guid}.${getMediaType(res.mime)}`;
           data.attachPaths.push(filename);
-	        //console.log("writing to:" + filename);
+	        // console.log("writing to:" + filename);
           return fs.writeFile(filename, res.data.body, (err) => {
             if (err) {
-              console.log("error:" + err);
+              console.log(`error:${err}`);
               throw err;
             }
           });
-        })
+        }),
       );
     })
     .then(() => {
-      resolve([data.content, data.attachPaths])
+      resolve([data.content, data.attachPaths]);
     })
     .catch((error) => {
       reject(error);
@@ -135,8 +133,8 @@ function findNoteFromDate(noteStore, dateString, notebookName) {
 }
 
 const client = new Evernote.Client({
-	sandbox: false,
-	token: secrets.evernote_dev_token,
+  sandbox: false,
+  token: secrets.evernote_dev_token,
 });
 const noteStore = client.getNoteStore();
 
@@ -147,21 +145,20 @@ getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m90String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
 Promise.all(getNotes).then((notes) => {
-
   // Generate attachments and embedded images
-  var attachments = [];
-  let embedded_images = ['', '', '', ''];
-  for (var i = 0; i < 4; i+=1) {
+  const attachments = [];
+  const embedded_images = ['', '', '', ''];
+  for (let i = 0; i < 4; i += 1) {
     // Make sure we check for "No note found with:" when pulling note info
     if (Array.isArray(notes[i])) {
-      let attachPaths = notes[i][1];
-      for (var j = 0; j < attachPaths.length; j+=1) {
-        let cid = `image_${i}_${j}`;
-        let embed_string = `<img src="cid:${cid}" width="100%"/>`;
+      const attachPaths = notes[i][1];
+      for (let j = 0; j < attachPaths.length; j += 1) {
+        const cid = `image_${i}_${j}`;
+        const embed_string = `<img src="cid:${cid}" width="100%"/>`;
 
         attachments.push({
-          cid: cid,
-          path: attachPaths[j]
+          cid,
+          path: attachPaths[j],
         });
         embedded_images[i] = embedded_images[i] + embed_string;
       }
@@ -204,23 +201,23 @@ Promise.all(getNotes).then((notes) => {
 
   // Send some mail!
 
-  var transporter = nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     service: 'Gmail',
     auth: {
       user: secrets.gmail_user,
-      pass: secrets.gmail_app_pwd
-    }
+      pass: secrets.gmail_app_pwd,
+    },
   });
 
   const mailOptions = {
     from: secrets.gmail_user,
     to: secrets.gmail_to,
     subject: `Journal Digest: ${nowString}`,
-    attachments: attachments,
-    html: html,
+    attachments,
+    html,
   };
 
-  return transporter.sendMail(mailOptions, function (err, info) {
+  return transporter.sendMail(mailOptions, (err, info) => {
     // Delete attachments
     if (attachments) {
       attachments.forEach(attachment => fs.unlinkSync(attachment.path));
