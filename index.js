@@ -40,6 +40,9 @@ const m7String = now.subtract({ days: 7 }).format(format);
 const m30String = now.subtract({ days: 23 }).format(format);
 const m90String = now.subtract({ days: 60 }).format(format);
 const m365String = now.subtract({ days: 275 }).format(format);
+// before I started using IFTTT on 2015/08/10, journal dates had a diff format
+const oldFormat = 'M/D/YYYY';
+const m5YearString = now.subtract({ days: 1460 }).format(oldFormat);
 
 function getMediaType(media) {
   if (media === '') {
@@ -144,6 +147,7 @@ getNotes.push(findNoteFromDate(noteStore, m7String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m30String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m90String, 'Journal'));
 getNotes.push(findNoteFromDate(noteStore, m365String, 'Journal'));
+getNotes.push(findNoteFromDate(noteStore, m5YearString, 'Journal'));
 Promise.all(getNotes).then((notes) => {
   // Generate attachments and embedded images
   const attachments = [];
@@ -197,6 +201,13 @@ Promise.all(getNotes).then((notes) => {
       <hr>
       ${notes[3][0]}
       ${embeddedImages[3]}
+
+      <br><br><br>
+      <big><b>-5 Year</b></big>
+      <br>
+      <hr>
+      ${notes[4][0]}
+      ${embeddedImages[4]}
   `;
 
   // Send some mail!
